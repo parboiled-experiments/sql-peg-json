@@ -1,5 +1,6 @@
 package org.parboiled.json;
 
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.json.Json;
 import javax.json.JsonObject;
 
 import org.parboiled.Action;
@@ -182,8 +184,16 @@ public class PegBigQueryParser extends PegParser {
 		SUPRESS_SUB_LABELS.add("column_name");
 	}
 
-	protected PegBigQueryParser() {
-		super("start", PegBigQueryParser.class.getClassLoader().getResourceAsStream("bigquery.peg.json"));
+	protected static Rule startRule;
+
+	public Rule start() {
+		if (startRule == null) {
+			InputStream resourceAsStream = PegBigQueryParser.class.getClassLoader()
+					.getResourceAsStream("bigquery.peg.json");
+			JsonObject json = Json.createReader(resourceAsStream).readObject();
+			startRule = super.start("start", json);
+		}
+		return startRule;
 	}
 
 	@DontLabel
