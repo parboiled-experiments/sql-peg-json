@@ -1,6 +1,10 @@
 package org.parboiled.json;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+
 import org.parboiled.Action;
+import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
 import org.parboiled.parserunners.ParseRunner;
 import org.parboiled.support.ParseTreeUtils;
@@ -28,10 +32,17 @@ public class DeclSQLParser extends DeclParser {
 		ACTIONS.put("_nowhere", (Action<?>) context -> !context.getMatch().equalsIgnoreCase("where"));
 	}
 
-	public DeclSQLParser() {
-		super("sql_stmt", DeclSQLParser.class.getClassLoader().getResourceAsStream("sql.json"));
-	}
+	private static Rule startRule;
 
+	@Override
+	public Rule start() {
+		if (startRule == null) {
+			JsonObject json = Json.createReader(getClass().getClassLoader().getResourceAsStream("sql.json")).readObject();
+			startRule = super.start("sql_stmt", json);
+		}
+		return startRule;
+	}
+	
 	private static void parse(String string) throws Exception {
 
 		ParseRunner<?> runner = ParseUtils.createParseRunner(false, DeclSQLParser.class);

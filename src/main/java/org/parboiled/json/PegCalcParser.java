@@ -1,8 +1,10 @@
 package org.parboiled.json;
 
+import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.json.Json;
 import javax.json.JsonObject;
 
 import org.parboiled.Rule;
@@ -29,8 +31,16 @@ public class PegCalcParser extends PegParser {
 		SUPRESS_SUB_LABELS.add("_tableName");
 	}
 
-	public PegCalcParser() {
-		super("Expression", PegCalcParser.class.getClassLoader().getResourceAsStream("calc.peg.json"));
+	private static Rule startRule;
+
+	@Override
+	public Rule start() {
+		if (startRule == null) {
+			InputStream inputStream = getClass().getClassLoader().getResourceAsStream("calc.peg.json");
+			JsonObject json = Json.createReader(inputStream).readObject();
+			startRule = super.start("Expression", json);
+		}
+		return startRule;
 	}
 
 	@DontLabel

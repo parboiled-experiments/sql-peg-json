@@ -1,5 +1,11 @@
 package org.parboiled.json;
 
+import java.io.StringReader;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+
+import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
 import org.parboiled.parserunners.ParseRunner;
 import org.parboiled.support.ParseTreeUtils;
@@ -15,8 +21,15 @@ public class DeclCalcParser extends DeclParser {
 			+ "\n 	\"factor\" : { \"_1of\" : [ \"_d\", { \"seq\":[\"(\",\"%expr%\",\")\" ] } ] } " //
 			+ "\n }";
 
-	public DeclCalcParser() {
-		super("expr", inputjson);
+	private static Rule startRule;
+
+	@Override
+	public Rule start() {
+		if (startRule == null) {
+			JsonObject json = Json.createReader(new StringReader(inputjson)).readObject();
+			startRule = super.start("expr", json);
+		}
+		return startRule;
 	}
 
 	private static void parse(String string) throws Exception {
