@@ -125,7 +125,7 @@ public class PegBigQueryParser extends PegParser {
 	private static Map<String, String> VERB_LABELS_MAP = new HashMap<>();
 	static {
 
-		VERB_LABELS_MAP.put("with_clause", "SELECT");
+		VERB_LABELS_MAP.put("with_clause", "WITH");
 		VERB_LABELS_MAP.put("select_stmt_nake", "SELECT");
 		VERB_LABELS_MAP.put("update_stmt", "UPDATE");
 		VERB_LABELS_MAP.put("delete_stmt", "DELETE");
