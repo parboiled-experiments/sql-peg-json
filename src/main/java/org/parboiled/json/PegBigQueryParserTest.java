@@ -1,5 +1,6 @@
 package org.parboiled.json;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -24,7 +25,6 @@ public class PegBigQueryParserTest {
 				+ "(SELECT ARRAY<STRUCT<city STRING, state STRING>>[(\"Seattle\",\"Washington\"), "
 				+ "(\"Phoenix\", \"Arizona\")] AS location) " + "SELECT l.LOCATION[offset(0)].* "
 				+ "FROM locations l");
-
 		parseSQL("WITH Roster AS " + "(SELECT 'Adams' as LastName, 50 as SchoolID ) " + "SELECT * FROM Roster");
 		parseSQL("WITH Roster AS "
 				+ "(SELECT 'Adams' as LastName, 50 as SchoolID UNION ALL SELECT 'Buchanan', 52 UNION ALL SELECT 'Davis', 51 ) "
@@ -175,6 +175,21 @@ public class PegBigQueryParserTest {
 
 		parseSQL("SELECT * from 'BigQuery.order' limit 111");
 
+		parseSQL("SELECT first_name, last_name FROM Stu1; " + //
+				"SELECT first_name, last_name FROM Stu2; " + //
+				"SELECT first_name, last_name FROM Stu3 " + //
+				"SELECT first_name, last_name FROM Stu4");
+
+		parseSQL("SELECT first_name, last_name FROM Stu;" + //
+				"Delete From Course where id = 3;" + //
+				"SELECT * FROM Course;" + //
+				"Update Stu Set first_name = 'adi' where id = 1;" + //
+				"Select student_id From Stu_Course;");
+
+		parseSQL("SELECT table_name, ddl FROM `bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.TABLES");
+		parseSQL("SELECT table_name, ddl FROM `bigquery-public-data`.census_bureau_usa.INFORMATION_SCHEMA.TABLES WHERE table_name = 'population_by_zip_2010'");
+		parseSQL("SELECT * FROM charged-mind-281913.SYdataset.books");
+		parseSQL("SELECT * FROM `charged-mind-281913.SYdataset.books`");
 		parseSQL("SELECT * FROM `charged-mind-281913.SYdataset.books` as test FOR SYSTEM_TIME AS OF TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)");
 
 		// ------------------ BUG FIXES
@@ -210,6 +225,12 @@ public class PegBigQueryParserTest {
 				+ "					dimensions STRUCT<depth FLOAT64, height FLOAT64, width FLOAT64>>\n"
 				+ "					('white', '1 year', NULL)\n" + "WHERE product like '%washer%'");
 
+		parseSQL("SELECT  " //
+				+ " TIMESTAMP_TRUNC(\"2015-06-15 00:00:00+00\", ISOYEAR) AS isoyear_boundary, " //
+				+ " EXTRACT(ISOYEAR FROM TIMESTAMP \"2015-06-15 00:00:00+00\") AS isoyear_number " //
+				+ " From test");
+
+		parseSQL("SELECT TIMESTAMP(\"2008-12-25 15:30:00+00\") AS timestamp_str from test;");
 	}
 
 	private static Map<String, String> VERB_LABEL_MAPPING = PegBigQueryParser.getVerbLabels();
@@ -231,9 +252,11 @@ public class PegBigQueryParserTest {
 			System.out.println("tree : ");
 			printTree(result);
 
-			Map<?, ?> verbObjectMap = prepareVerbObjectMap(result);
-			verbObjectMap = cleanVerbs(verbObjectMap);
-			System.out.println("verbObjectMap : " + verbObjectMap);
+			List<Map<String, Object>> verbObjectMapList = prepareVerbObjectMap(result);
+			System.out.println("verbObjectMapList : " + verbObjectMapList);
+
+			verbObjectMapList.forEach(PegBigQueryParserTest::cleanVerbs);
+			System.out.println("verbObjectMapList-cleaned : " + verbObjectMapList);
 
 		} else {
 			throw new RuntimeException("not matched : " + sql);
@@ -272,7 +295,9 @@ public class PegBigQueryParserTest {
 	private static void printTree(ParsingResult<?> result) {
 
 		ParseUtils.visitTree(result.parseTreeRoot, (node, level) -> {
-			if (VERB_LABEL_MAPPING.containsKey(node.getLabel()) || OBJECT_LABELS.contains(node.getLabel())) {
+			if (VERB_LABEL_MAPPING.containsKey(node.getLabel()) //
+					|| OBJECT_LABELS.contains(node.getLabel()) //
+					|| "SEMICOLON".equals(node.getLabel())) {
 				System.out.print(level + " : ");
 				for (int i = 0; i < level; i++) {
 					System.out.print(" ");
@@ -285,12 +310,11 @@ public class PegBigQueryParserTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Map<String, Object> prepareVerbObjectMap(ParsingResult<?> result) {
+	private static List<Map<String, Object>> prepareVerbObjectMap(ParsingResult<?> result) {
 
-		Map<String, Object> verbObjectMap = new HashMap<>();
-
-		Stack<Map<String, Object>> verbObjectMapStack = new Stack<>();
+		List<Map<String, Object>> verbObjectMapList = new ArrayList<>();
 		Stack<Integer> verbLevelStack = new Stack<>();
+		Stack<Map<String, Object>> verbObjectMapStack = new Stack<>();
 
 		ParseUtils.visitTree(result.parseTreeRoot, (node, level) -> {
 
@@ -299,8 +323,10 @@ public class PegBigQueryParserTest {
 
 			if (verb != null) {
 				if (verbLevelStack.size() == 0) {
+					Map<String, Object> verbObjectMap = new HashMap<>();
 					verbObjectMap.put("verb", verb);
 					verbObjectMapStack.push(verbObjectMap);
+					verbObjectMapList.add(verbObjectMap);
 				} else {
 					Map<String, Object> parentVerbObjectMap = getParentMap(level, verbLevelStack, verbObjectMapStack);
 					List<Map<?, ?>> descMapList = (List<Map<?, ?>>) parentVerbObjectMap.get("descs");
@@ -326,13 +352,17 @@ public class PegBigQueryParserTest {
 				}
 				objectList.add(object);
 
+			} else if ("SEMICOLON".equals(label)) {
+				verbLevelStack.clear();
+				verbObjectMapStack.clear();
 			}
 			return true;
 		});
-		return verbObjectMap;
+		return verbObjectMapList;
 	}
 
-	public static Map<String, Object> getParentMap(Integer level, Stack<Integer> verbLevelStack, Stack<Map<String, Object>> verbObjectMapStack) {
+	public static Map<String, Object> getParentMap(Integer level, Stack<Integer> verbLevelStack,
+			Stack<Map<String, Object>> verbObjectMapStack) {
 		int parentVerbLevel = verbLevelStack.peek();
 		Map<String, Object> parentVerbObjectMap = verbObjectMapStack.peek();
 
