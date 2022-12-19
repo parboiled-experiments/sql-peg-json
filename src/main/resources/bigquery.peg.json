@@ -7600,6 +7600,14 @@
 									{
 										"type": "rule_ref",
 										"name": "KW_ORDINAL"
+									},
+									{
+										"type": "rule_ref",
+										"name": "KW_SAFE_OFFSET"
+									},
+									{
+										"type": "rule_ref",
+										"name": "KW_SAFE_ORDINAL"
 									}
 								]
 							}
@@ -15854,6 +15862,30 @@
 		},
 		{
 			"type": "rule",
+			"name": "KW_SAFE_ORDINAL",
+			"expression": {
+				"type": "action",
+				"expression": {
+					"type": "sequence",
+					"elements": [
+						{
+							"type": "literal",
+							"value": "SAFE_ORDINAL",
+							"ignoreCase": true
+						},
+						{
+							"type": "simple_not",
+							"expression": {
+								"type": "rule_ref",
+								"name": "ident_start"
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"type": "rule",
 			"name": "KW_LIMIT",
 			"expression": {
 				"type": "sequence",
@@ -15894,8 +15926,31 @@
 							}
 						}
 					]
-				},
-				"code": " return 'OFFSET'; "
+				}
+			}
+		},
+		{
+			"type": "rule",
+			"name": "KW_SAFE_OFFSET",
+			"expression": {
+				"type": "action",
+				"expression": {
+					"type": "sequence",
+					"elements": [
+						{
+							"type": "literal",
+							"value": "SAFE_OFFSET",
+							"ignoreCase": true
+						},
+						{
+							"type": "simple_not",
+							"expression": {
+								"type": "rule_ref",
+								"name": "ident_start"
+							}
+						}
+					]
+				}
 			}
 		},
 		{
